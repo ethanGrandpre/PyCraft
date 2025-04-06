@@ -7,14 +7,14 @@ globalClock = ClockObject.getGlobalClock()
 loadPrcFile("src/Prefs/config.prc")
 
 worldX = 10
-worldY = 10
-worldZ = 20
+worldY = 20
+worldZ = 10
 renderDist = 50
 
 class World:
     def __init__(self, base):
         self.base = base
-        self.grass = self.base.loader.loadModel("./src/models/grassBlock2.glb")
+        self.grass = self.base.loader.loadModel("./src/models/grassBlock3.glb")
         self.grass.reparentTo(self.base.render)
 
     def generateTerrain(self, x, y, z):
