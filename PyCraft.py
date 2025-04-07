@@ -1,6 +1,7 @@
 from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
-from panda3d.core import loadPrcFile, ClockObject
+from panda3d.core import loadPrcFile, ClockObject, NodePath, WindowProperties, TransparencyAttrib
+from direct.gui.OnscreenImage import OnscreenImage
 
 globalClock = ClockObject.getGlobalClock()
 
@@ -9,7 +10,22 @@ loadPrcFile("src/Prefs/config.prc")
 worldX = 10
 worldY = 20
 worldZ = 10
+playerSpeed = 20
 renderDist = 50
+camSensativity = 0.2
+
+
+class GUI:
+    def __init__(self):
+        self.node = NodePath("guiRoot")
+        self.node.reparentTo(aspect2d) # type: ignore
+
+        self.hotbar = OnscreenImage(image="./src/minecraftHotbar.png", pos=(0, 0, -0.85), scale=(0.8, 1, 0.09))
+        self.hotbar.reparentTo(self.node)
+        self.crosshair = OnscreenImage(image="./src/crosshair.png", pos=(0, 0, 0), scale=0.06)
+        self.crosshair.reparentTo(self.node)
+        self.crosshair.setTransparency(TransparencyAttrib.MAlpha)
+
 
 class World:
     def __init__(self, base):
@@ -35,14 +51,24 @@ class Player:
     def __init__(self, base):
         self.base = base
         self.control()
-    
+
     def control(self):
         self.base.disableMouse()
+
+        # Hide the cursor
+        props = WindowProperties()
+        props.setCursorHidden(True)  # Hide the cursor
+        self.base.win.requestProperties(props)
+
+        # Confine the mouse to the window
+        props.setMouseMode(WindowProperties.MConfined)
+        self.base.win.requestProperties(props)
+
         self.base.taskMgr.add(self.cameraControls, "cameraPointToMouse")
 
     def cameraControls(self, task):
         is_down = self.base.mouseWatcherNode.is_button_down
-        speed = 5 * globalClock.getDt()
+        speed = playerSpeed * globalClock.getDt()
 
         if is_down("w"):
             self.base.camera.setPos(self.base.camera, 0, speed, 0)
@@ -52,6 +78,7 @@ class Player:
             self.base.camera.setPos(self.base.camera, -speed, 0, 0)
         if is_down("d"):
             self.base.camera.setPos(self.base.camera, speed, 0, 0)
+
         md = self.base.win.getPointer(0)
         x = md.getX()
         y = md.getY()
@@ -61,10 +88,13 @@ class Player:
         if self.base.win.movePointer(0, centerX, centerY):
             deltaX = x - centerX
             deltaY = y - centerY
-            self.base.camera.setH(self.base.camera.getH() - deltaX * 0.1)
-            self.base.camera.setP(self.base.camera.getP() - deltaY * 0.1)
+            self.base.camera.setH(self.base.camera.getH() - deltaX * camSensativity)
+            self.base.camera.setP(self.base.camera.getP() - deltaY * camSensativity)
 
         return Task.cont
+
+
+
 
 class PyCraft(ShowBase):
     def __init__(self):
@@ -72,8 +102,10 @@ class PyCraft(ShowBase):
 
         self.world = World(self)
         self.player = Player(self)
+        self.gui = GUI()
         self.world.generateTerrain(worldX, worldY, worldZ)
         self.taskMgr.add(self.occulsionCulling, "renderDistanceLoading")
+        
     
     def occulsionCulling(self, task):
         camera_pos = self.camera.getPos()
