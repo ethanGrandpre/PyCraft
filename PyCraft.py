@@ -20,7 +20,7 @@ camSensativity = 0.2
 class GUI:
     def __init__(self):
         self.node = NodePath("guiRoot")
-        self.node.reparentTo(aspect2d)
+        self.node.reparentTo(aspect2d) #type: ignore
 
         self.hotbar = OnscreenImage(image="./src/minecraftHotbar.png", pos=(0, 0, -0.85), scale=(0.8, 1, 0.09))
         self.hotbar.reparentTo(self.node)
@@ -81,9 +81,15 @@ class GUI:
         self.pauseOpen = False
         base.player.enabled = True
 
+        props = WindowProperties()
+        props.setCursorHidden(True)
+        props.setMouseMode(WindowProperties.MConfined)
+        base.win.requestProperties(props)
+
         if self.pauseFrame:
             self.pauseFrame.destroy()
             self.pauseFrame = None
+
 
     def pauseTask(self, task):
         is_down = base.mouseWatcherNode.is_button_down("escape")
