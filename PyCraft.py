@@ -2,29 +2,102 @@ from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
 from panda3d.core import loadPrcFile, ClockObject, NodePath, WindowProperties, TransparencyAttrib
 from direct.gui.OnscreenImage import OnscreenImage
+from direct.gui.DirectFrame import DirectFrame
+from direct.gui.DirectSlider import DirectSlider
+from direct.gui.DirectButton import DirectButton
 
 globalClock = ClockObject.getGlobalClock()
-
 loadPrcFile("src/Prefs/config.prc")
 
 worldX = 10
 worldY = 20
 worldZ = 10
 playerSpeed = 20
-renderDist = 50
+renderDist = 45
 camSensativity = 0.2
 
 
 class GUI:
     def __init__(self):
         self.node = NodePath("guiRoot")
-        self.node.reparentTo(aspect2d) # type: ignore
+        self.node.reparentTo(aspect2d)
 
         self.hotbar = OnscreenImage(image="./src/minecraftHotbar.png", pos=(0, 0, -0.85), scale=(0.8, 1, 0.09))
         self.hotbar.reparentTo(self.node)
+
         self.crosshair = OnscreenImage(image="./src/crosshair.png", pos=(0, 0, 0), scale=0.06)
         self.crosshair.reparentTo(self.node)
         self.crosshair.setTransparency(TransparencyAttrib.MAlpha)
+
+        self.blank()
+        self.pauseFrame = None
+        self.pauseOpen = False
+        self.lastEscape = False
+
+        base.taskMgr.add(self.pauseTask, "pauseTask")
+
+    def blank(self):
+        self.blankFrame = DirectFrame(
+            parent=self.node,
+            frameColor=(0, 0, 0, 0),
+            frameSize=(1.35, -1.35, 1.35, -1.35),
+            pos=(0, 0, 0),
+        )
+
+    def pauseScreen(self):
+        self.pauseOpen = True
+        base.player.enabled = False
+        props = WindowProperties()
+        props.setCursorHidden(False)
+        props.setMouseMode(WindowProperties.MAbsolute)
+        base.win.requestProperties(props)
+
+        self.pauseFrame = DirectFrame(
+            parent=self.node,
+            frameColor=(0, 0, 0, 0.5),
+            frameSize=(1.35, -1.35, 1.35, -1.35),
+            pos=(0, 0, 0),
+        )
+
+        self.slider = DirectSlider(
+            parent=self.pauseFrame,
+            range=(0.1, 0.4),
+            value=camSensativity,
+            pageSize=0.1,
+            pos=(0, 0, 0.5),
+            scale=0.5,
+            command=self.updateSensitivity
+        )
+
+        self.quitButton = DirectButton(
+            parent=self.pauseFrame,
+            text="Quit",
+            scale=0.05,
+            pos=(0, 0, 0),
+            command=base.userExit
+        )
+
+    def resumeGame(self):
+        self.pauseOpen = False
+        base.player.enabled = True
+
+        if self.pauseFrame:
+            self.pauseFrame.destroy()
+            self.pauseFrame = None
+
+    def pauseTask(self, task):
+        is_down = base.mouseWatcherNode.is_button_down("escape")
+        if is_down and not self.lastEscape:
+            if self.pauseOpen:
+                self.resumeGame()
+            else:
+                self.pauseScreen()
+        self.lastEscape = is_down
+        return Task.cont
+
+    def updateSensitivity(self):
+        global camSensativity
+        camSensativity = self.slider['value']
 
 
 class World:
@@ -50,23 +123,23 @@ class World:
 class Player:
     def __init__(self, base):
         self.base = base
+        self.enabled = True
         self.control()
 
     def control(self):
         self.base.disableMouse()
-
-        # Hide the cursor
         props = WindowProperties()
-        props.setCursorHidden(True)  # Hide the cursor
+        props.setCursorHidden(True)
         self.base.win.requestProperties(props)
-
-        # Confine the mouse to the window
         props.setMouseMode(WindowProperties.MConfined)
         self.base.win.requestProperties(props)
 
         self.base.taskMgr.add(self.cameraControls, "cameraPointToMouse")
 
     def cameraControls(self, task):
+        if not self.enabled:
+            return Task.cont
+
         is_down = self.base.mouseWatcherNode.is_button_down
         speed = playerSpeed * globalClock.getDt()
 
@@ -94,8 +167,6 @@ class Player:
         return Task.cont
 
 
-
-
 class PyCraft(ShowBase):
     def __init__(self):
         super().__init__()
@@ -105,8 +176,7 @@ class PyCraft(ShowBase):
         self.gui = GUI()
         self.world.generateTerrain(worldX, worldY, worldZ)
         self.taskMgr.add(self.occulsionCulling, "renderDistanceLoading")
-        
-    
+
     def occulsionCulling(self, task):
         camera_pos = self.camera.getPos()
         for node in self.render.getChildren():
@@ -117,9 +187,8 @@ class PyCraft(ShowBase):
                     node.hide()
                 else:
                     node.show()
-        if self.mouseWatcherNode.is_button_down("escape"):
-            self.userExit()
         return Task.cont
+
 
 if __name__ == "__main__":
     base = PyCraft()
