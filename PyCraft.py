@@ -16,15 +16,18 @@ class World:
         self.base = base
         self.grass = self.base.loader.loadModel("./src/models/grassBlock3.glb")
         self.dirt = self.base.loader.loadModel("./src/models/dirtBlock.glb")
+        self.stone = self.base.loader.loadModel("./src/models/stoneBlock.glb")
 
     def generateTerrain(self, x, y, z):
-        for i in range(x):         # X-axis
-            for k in range(z):     # Z-axis
-                for j in range(y): # Y-axis (height)
+        for i in range(x):
+            for k in range(z):
+                for j in range(y):
                     if j == y - 1:
                         block = self.grass.copyTo(self.base.render)
-                    else:
+                    elif j > y - 5:
                         block = self.dirt.copyTo(self.base.render)
+                    else:
+                        block = self.stone.copyTo(self.base.render)
                     block.setPos(i * 2, k * 2, j * 2)
 
 
