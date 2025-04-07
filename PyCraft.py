@@ -15,14 +15,18 @@ class World:
     def __init__(self, base):
         self.base = base
         self.grass = self.base.loader.loadModel("./src/models/grassBlock3.glb")
-        self.grass.reparentTo(self.base.render)
+        self.dirt = self.base.loader.loadModel("./src/models/dirtBlock.glb")
 
     def generateTerrain(self, x, y, z):
-        for i in range(x):
-            for j in range(y):
-                for h in range(z):
-                    block = self.grass.copyTo(self.base.render)
-                    block.setPos(i*2, h*2, j*2)
+        for i in range(x):         # X-axis
+            for k in range(z):     # Z-axis
+                for j in range(y): # Y-axis (height)
+                    if j == y - 1:
+                        block = self.grass.copyTo(self.base.render)
+                    else:
+                        block = self.dirt.copyTo(self.base.render)
+                    block.setPos(i * 2, k * 2, j * 2)
+
 
 class Player:
     def __init__(self, base):
