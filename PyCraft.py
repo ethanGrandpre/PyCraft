@@ -22,12 +22,14 @@ class GUI:
         self.node = NodePath("guiRoot")
         self.node.reparentTo(aspect2d) #type: ignore
 
-        self.hotbar = OnscreenImage(image="./src/minecraftHotbar.png", pos=(0, 0, -0.85), scale=(0.8, 1, 0.09))
+        self.hotbar = OnscreenImage(image="./src/img/minecraftHotbar.png", pos=(0, 0, -0.85), scale=(0.8, 1, 0.09))
         self.hotbar.reparentTo(self.node)
 
-        self.crosshair = OnscreenImage(image="./src/crosshair.png", pos=(0, 0, 0), scale=0.06)
+        self.crosshair = OnscreenImage(image="./src/img/crosshair.png", pos=(0, 0, 0), scale=0.06)
         self.crosshair.reparentTo(self.node)
         self.crosshair.setTransparency(TransparencyAttrib.MAlpha)
+
+        self.buttonClickSound = loader.loadSfx("src/audio/Click.mp3") #type: ignore
 
         self.blank()
         self.pauseFrame = None
@@ -66,16 +68,22 @@ class GUI:
             pageSize=0.1,
             pos=(0, 0, 0.5),
             scale=0.5,
+            thumb_relief="ridge",
             command=self.updateSensitivity
         )
 
         self.quitButton = DirectButton(
             parent=self.pauseFrame,
             text="Quit",
-            scale=0.05,
-            pos=(0, 0, 0),
-            command=base.userExit
+            frameSize=(-5,5,-0.8,0.8),
+            scale=0.1,
+            pos=(0, 0, -0.7),
+            command=self.quitGame
         )
+
+    def quitGame(self):
+        self.buttonClickSound.play()
+        base.userExit()
 
     def resumeGame(self):
         self.pauseOpen = False
@@ -90,7 +98,6 @@ class GUI:
             self.pauseFrame.destroy()
             self.pauseFrame = None
 
-
     def pauseTask(self, task):
         is_down = base.mouseWatcherNode.is_button_down("escape")
         if is_down and not self.lastEscape:
@@ -104,6 +111,9 @@ class GUI:
     def updateSensitivity(self):
         global camSensativity
         camSensativity = self.slider['value']
+        if not base.mouseWatcherNode.is_button_down("mouse1"):
+            self.buttonClickSound.play()
+        self.buttonClickSound.play()
 
 
 class World:
