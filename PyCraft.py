@@ -30,15 +30,43 @@ class GUI:
         self.crosshair.setTransparency(TransparencyAttrib.MAlpha)
 
         self.buttonClickSound = loader.loadSfx("src/audio/Click.mp3") #type: ignore
-
-        self.blank()
+        self.homeScreen()
         self.pauseFrame = None
         self.pauseOpen = False
         self.lastEscape = False
 
         base.taskMgr.add(self.pauseTask, "pauseTask")
+    
+    def homeScreen(self):
+        props = WindowProperties()
+        base.player.enabled = False
+        props.setCursorHidden(False)
+        props.setMouseMode(WindowProperties.MAbsolute)
+        base.win.requestProperties(props)
+
+        self.homeFrame = DirectFrame(
+            parent=self.node,
+            frameColor=(1, 1, 1, 1),
+            frameSize=(1.35, -1.35, 1.35, -1.35),
+            pos=(0, 0, 0),
+        )
+        self.singlePlayerButton = DirectButton(
+            parent=self.homeFrame,
+            frameSize=(-5, 5, -1, 1),
+            scale=0.1,
+            text="Singleplayer",
+            text_shadow=(0, 0, 0, 1),
+            command=self.handleSingleplayerClick,
+        )
 
     def blank(self):
+        self.pauseOpen = False
+        base.player.enabled = True
+        props = WindowProperties()
+        props.setCursorHidden(True)
+        props.setMouseMode(WindowProperties.MAbsolute)
+        base.win.requestProperties(props)
+        self.homeFrame.destroy()
         self.blankFrame = DirectFrame(
             parent=self.node,
             frameColor=(0, 0, 0, 0),
@@ -114,6 +142,11 @@ class GUI:
         if not base.mouseWatcherNode.is_button_down("mouse1"):
             self.buttonClickSound.play()
         self.buttonClickSound.play()
+    
+    def handleSingleplayerClick(self):
+        self.buttonClickSound.play()
+        self.blank()
+
 
 
 class World:
