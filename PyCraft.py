@@ -5,6 +5,10 @@ from direct.gui.OnscreenImage import OnscreenImage
 from direct.gui.DirectFrame import DirectFrame
 from direct.gui.DirectSlider import DirectSlider
 from direct.gui.DirectButton import DirectButton
+from direct.gui.OnscreenText import OnscreenText
+from direct.gui.DirectEntry import DirectEntry
+import json
+import os
 
 globalClock = ClockObject.getGlobalClock()
 loadPrcFile("src/Prefs/config.prc")
@@ -34,6 +38,7 @@ class GUI:
         self.pauseFrame = None
         self.pauseOpen = False
         self.lastEscape = False
+        self.homescreen = True
 
         base.taskMgr.add(self.pauseTask, "pauseTask")
     
@@ -54,9 +59,34 @@ class GUI:
             parent=self.homeFrame,
             frameSize=(-5, 5, -1, 1),
             scale=0.1,
+            pos=(0, 1, 0.3),
             text="Singleplayer",
             text_shadow=(0, 0, 0, 1),
             command=self.handleSingleplayerClick,
+        )
+    
+    def singlePlayer(self):
+        self.sPlayer = True
+        props = WindowProperties()
+        props.setCursorHidden(False)
+        base.win.requestProperties(props)
+        self.homeFrame.hide()
+
+        self.singlePlayerScreen = DirectFrame(
+            parent=self.node,
+            frameColor=(0.5, 0.3, 0.2, 1),
+            frameSize=(1.35, -1.35, 1.35, -1.35),
+            pos=(0, 0, 0),
+        )
+        self.newWorldButton = DirectButton(
+            parent=self.singlePlayerScreen,
+            text="Create New World",
+            scale=0.1,
+            frameSize=(-5,5,-0.8,0.8),
+            frameColor=(1, 1, 1, 1),
+            text_fg=(0, 0, 0, 1),
+            pos=(0, 1, -0.3),
+            command=self.createNewWorld
         )
 
     def blank(self):
@@ -88,18 +118,22 @@ class GUI:
             frameSize=(1.35, -1.35, 1.35, -1.35),
             pos=(0, 0, 0),
         )
-
+        self.text = OnscreenText(
+            parent=self.pauseFrame,
+            text="Change Sensativity",
+            pos=(-0.6, 0.6, 1),
+            fg=(1,1,1,1),
+        )
         self.slider = DirectSlider(
             parent=self.pauseFrame,
             range=(0.1, 0.4),
             value=camSensativity,
             pageSize=0.1,
-            pos=(0, 0, 0.5),
+            pos=(-0.5, 0, 0.5),
             scale=0.5,
             thumb_relief="ridge",
             command=self.updateSensitivity
         )
-
         self.quitButton = DirectButton(
             parent=self.pauseFrame,
             text="Quit",
@@ -128,12 +162,13 @@ class GUI:
 
     def pauseTask(self, task):
         is_down = base.mouseWatcherNode.is_button_down("escape")
-        if is_down and not self.lastEscape:
-            if self.pauseOpen:
-                self.resumeGame()
-            else:
-                self.pauseScreen()
-        self.lastEscape = is_down
+        if not self.homescreen:
+            if is_down and not self.lastEscape:
+                if self.pauseOpen:
+                    self.resumeGame()
+                else:
+                    self.pauseScreen()
+            self.lastEscape = is_down
         return Task.cont
 
     def updateSensitivity(self):
@@ -145,8 +180,52 @@ class GUI:
     
     def handleSingleplayerClick(self):
         self.buttonClickSound.play()
-        self.blank()
+        self.singlePlayer()
+    
+    def createNewWorld(self):
+        self.frame = DirectFrame(
+            parent=self.node,
+            frameSize=(1.35, -1.35, 1.35, -1.35),
+            frameColor=(0.5, 0.3, 0.1, 1),
+        )
+        self.worldName = DirectEntry(
+            parent=self.frame,
+            width=10,
+            scale=0.1,
+            pos=(-0.5, 0, 0.7),
+        )
+        self.createButton = DirectButton(
+            parent=self.frame,
+            text="Create",
+            scale=0.1,
+            pos=(0, 0, -0.5),
+            command=self.createWorld
+        )
 
+    def createWorld(self):
+        name = self.worldName.get()
+        if not os.path.exists("saves"):
+            os.makedirs("saves")
+        data = {
+            "world_name": name,
+            "seed": None,
+            "created": True
+        }
+        with open(f"saves/{name}.json", "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"World '{name}' saved.")
+
+    def loadWorldData(self, name, data):
+        self.worldName = name
+        name = DirectEntry(
+            parent=self.frame,
+            scale=0.1,
+            width=10,
+        )
+        with open(data, "r") as f:
+            self.data = json.load(f)
+        json.load(data)
+        print(data)
 
 
 class World:
@@ -224,7 +303,7 @@ class PyCraft(ShowBase):
         self.player = Player(self)
         self.gui = GUI()
         self.world.generateTerrain(worldX, worldY, worldZ)
-        self.taskMgr.add(self.occulsionCulling, "renderDistanceLoading")
+        self.taskMgr.add(self.occulsionCulling, "renderDistance")
 
     def occulsionCulling(self, task):
         camera_pos = self.camera.getPos()
