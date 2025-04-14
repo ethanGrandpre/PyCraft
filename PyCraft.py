@@ -33,7 +33,7 @@ class GUI:
         self.crosshair.reparentTo(self.node)
         self.crosshair.setTransparency(TransparencyAttrib.MAlpha)
 
-        self.buttonClickSound = loader.loadSfx("src/audio/Click.mp3") #type: ignore
+        self.clickSound = loader.loadSfx("src/audio/Click.mp3") #type: ignore
         self.homeScreen()
         self.pauseFrame = None
         self.pauseOpen = False
@@ -41,6 +41,7 @@ class GUI:
         self.homescreen = True
 
         base.taskMgr.add(self.pauseTask, "pauseTask")
+        self.handleEscapeKey()
     
     def homeScreen(self):
         props = WindowProperties()
@@ -78,16 +79,37 @@ class GUI:
             frameSize=(1.35, -1.35, 1.35, -1.35),
             pos=(0, 0, 0),
         )
-        self.newWorldButton = DirectButton(
+
+        has_saves = os.path.exists("saves") and os.listdir("saves")
+        if has_saves:
+            y_offset = 0.4
+            for idx, filename in enumerate(os.listdir("saves")):
+                if filename.endswith(".json"):
+                    world_name = filename[:-5]
+                    DirectButton(
+                        parent=self.singlePlayerScreen,
+                        text=world_name,
+                        scale=0.08,
+                        frameSize=(-5, 5, -0.8, 0.8),
+                        frameColor=(1, 1, 1, 1),
+                        text_fg=(0, 0, 0, 1),
+                        pos=(0, 0, y_offset),
+                        command=self.loadWorld,
+                        extraArgs=[filename]
+                    )
+                    y_offset -= 0.2
+
+        DirectButton(
             parent=self.singlePlayerScreen,
             text="Create New World",
             scale=0.1,
-            frameSize=(-5,5,-0.8,0.8),
+            frameSize=(-5, 5, -0.8, 0.8),
             frameColor=(1, 1, 1, 1),
             text_fg=(0, 0, 0, 1),
-            pos=(0, 1, -0.3),
+            pos=(0, 0, -0.6),
             command=self.createNewWorld
         )
+
 
     def blank(self):
         self.pauseOpen = False
@@ -144,7 +166,7 @@ class GUI:
         )
 
     def quitGame(self):
-        self.buttonClickSound.play()
+        self.clickSound.play()
         base.userExit()
 
     def resumeGame(self):
@@ -171,15 +193,24 @@ class GUI:
             self.lastEscape = is_down
         return Task.cont
 
+    def handleEscapeKey(self):
+        base.accept("escape", self.togglePause)
+
+    def togglePause(self):
+        if self.pauseOpen:
+            self.resumeGame()
+        else:
+            self.pauseScreen()
+
     def updateSensitivity(self):
         global camSensativity
         camSensativity = self.slider['value']
         if not base.mouseWatcherNode.is_button_down("mouse1"):
-            self.buttonClickSound.play()
-        self.buttonClickSound.play()
+            self.clickSound.play()
+        self.clickSound.play()
     
     def handleSingleplayerClick(self):
-        self.buttonClickSound.play()
+        self.clickSound.play()
         self.singlePlayer()
     
     def createNewWorld(self):
@@ -194,11 +225,18 @@ class GUI:
             scale=0.1,
             pos=(-0.5, 0, 0.7),
         )
+        self.backButton = DirectButton(
+            parent=self.frame,
+            text="Back",
+            scale=0.1,
+            pos=(-0.3, 0, -0.5),
+            command=self.singlePlayer,
+        )
         self.createButton = DirectButton(
             parent=self.frame,
             text="Create",
             scale=0.1,
-            pos=(0, 0, -0.5),
+            pos=(0.3, 0, -0.5),
             command=self.createWorld
         )
 
@@ -215,17 +253,12 @@ class GUI:
             json.dump(data, f, indent=4)
         print(f"World '{name}' saved.")
 
-    def loadWorldData(self, name, data):
-        self.worldName = name
-        name = DirectEntry(
-            parent=self.frame,
-            scale=0.1,
-            width=10,
-        )
-        with open(data, "r") as f:
-            self.data = json.load(f)
-        json.load(data)
-        print(data)
+    def loadWorld(self, filename):
+        with open(f"saves/{filename}", "r") as f:
+            data = json.load(f)
+        print(f"Loaded world: {data['world_name']}")
+        self.singlePlayerScreen.hide()
+        self.blank()
 
 
 class World:
